@@ -636,13 +636,15 @@ Answer quality:
 - Synthesize across sources into a clear, complete answer—not a list of quotes.
 - Lead with a direct 1–2 sentence answer, then supporting detail when helpful.
 - Define abbreviations on first use as **TERM** (full definition).
-- Answer in the same language as the user's QUESTION.
+- Always answer in English, even when the user's QUESTION is in another language.
 - Stay relevant to the question; omit tangents.
 
 Citations:
 - Cite every factual claim with [n] immediately after the claim.
 - Use ONLY citation numbers present in CONTEXT. Never invent sources.
-- If CONTEXT lacks the answer, say so clearly. Do NOT suggest other documents, \
+- If CONTEXT lacks the answer, say so clearly in English: state that the question is not \
+covered by the provided CONTEXT, briefly note what topics the CONTEXT does cover, and \
+offer to help with aviation-regulation questions. Do NOT suggest other documents, \
 regulations, parts, or sources that are not in the CONTEXT block.
 - Never write "refer to Part X" or "see document Y" unless that source appears in CONTEXT.
 - If only part of the question is answerable, answer that part and note gaps.
@@ -787,8 +789,11 @@ def _prepare_hits(
     return hits, actions
 
 
-def _adaptive_max_tokens(question: str, params: dict) -> tuple[int, dict | None]:
-    """Shorter cap for brief questions; extra room for multi-part / list-style questions."""
+def _adaptive_max_tokens(question: str, params: dict) -> tuple[int, int | None]:
+    """Shorter cap for brief questions; extra room for multi-part / list-style questions.
+
+    Returns (effective_cap, user_max_tokens_if_lowered_else_None).
+    """
     multi_part = bool(
         re.search(
             r"\b(cases?|conditions?|requirements?|exceptions?|list|enumerate|what are|"
@@ -805,11 +810,7 @@ def _adaptive_max_tokens(question: str, params: dict) -> tuple[int, dict | None]
     cap = min(params["max_tokens"], 512)
     if cap >= params["max_tokens"]:
         return params["max_tokens"], None
-    return cap, {
-        "code": "capped_output_tokens",
-        "label": f"Short question — output cap {cap} (max {params['max_tokens']})",
-        "tokens_saved": params["max_tokens"] - cap,
-    }
+    return cap, params["max_tokens"]
 
 
 def _summarize_savings(actions: list[dict]) -> dict:
@@ -1568,10 +1569,9 @@ def _prepare_chat_request(
     messages.append({"role": "user", "content": user_content})
     state["messages"] = messages
 
-    max_tokens, cap_action = _adaptive_max_tokens(user_message, params)
+    max_tokens, capped_from = _adaptive_max_tokens(user_message, params)
     state["max_tokens"] = max_tokens
-    if cap_action:
-        savings_actions.append(cap_action)
+    state["output_capped_from"] = capped_from
 
     state["t_before_llm"] = time.perf_counter()
     return state
@@ -1593,13 +1593,17 @@ def _finalize_chat_response(
     usage = _usage_from_response(llm_response)
     savings_actions = list(state["savings_actions"])
 
-    unused_output = max(0, state["max_tokens"] - usage["output_tokens"])
-    if unused_output > 32:
-        savings_actions.append({
-            "code": "unused_output_budget",
-            "label": f"Output under cap ({usage['output_tokens']}/{state['max_tokens']} tokens)",
-            "tokens_saved": unused_output,
-        })
+    capped_from = state.get("output_capped_from")
+    cap = state["max_tokens"]
+    if capped_from and capped_from > cap:
+        # Only count savings when the lower cap actually limited generation.
+        binding_margin = max(8, int(cap * 0.02))
+        if usage["output_tokens"] >= cap - binding_margin:
+            savings_actions.append({
+                "code": "capped_output_tokens",
+                "label": f"Short question — output capped at {cap} (limit {capped_from})",
+                "tokens_saved": capped_from - cap,
+            })
 
     timing = {
         "total_ms": int(round((time.perf_counter() - state["t_start"]) * 1000)),
