@@ -27,7 +27,7 @@ DEFAULT_PARAMS = {
     "top_k": 6,
     "max_distance": 0.50,
     "fallback_max_distance": 0.60,
-    "max_context_chars": 4500,
+    "max_context_chars": 8000,
     "max_tokens": 768,
 }
 
