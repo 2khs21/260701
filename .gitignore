@@ -1,0 +1,46 @@
+# Environment & secrets
+.env
+.env.local
+.env.*.local
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+dist/
+build/
+*.egg
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Generated RAG index (rebuild with: python indexer.py)
+index.pkl
+
+# Node / frontend
+node_modules/
+frontend/dist/
+.vite/
+
+# Logs & temp
+*.log
+*.tmp
+.cache/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
