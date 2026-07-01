@@ -5,39 +5,40 @@
 ```mermaid
 flowchart LR
     subgraph Input["입력"]
-        PDF[CFR PDF / md / txt]
+        PDF["CFR PDF / md / txt"]
     end
 
     subgraph Extract["추출·정제"]
         Read[read_document]
-        Clean[clean_cfr_noise\n페이지·머리글·하이픈 복구]
+        Clean["clean_cfr_noise<br/>페이지·머리글·하이픈 복구"]
         Norm[normalize_extracted_text]
     end
 
     subgraph Chunk["청킹"]
-        Sec[§ 경계 분할]
-        Pack[~1000자 + 100자 오버랩]
-        Filter[is_noise_text\nis_toc_chunk_text]
+        Sec["§ 경계 분할"]
+        Pack["~1000자 + 100자 오버랩"]
+        Filter["is_noise_text<br/>is_toc_chunk_text"]
     end
 
     subgraph Meta["메타데이터 v3"]
-        M[part, section, sections[]\nsection_title, is_toc, chunk_type]
-        Tok[BM25 토큰 보강\npart91, 91.151, title]
+        M["part, section, sections<br/>section_title, is_toc, chunk_type"]
+        Tok["BM25 토큰 보강<br/>part91, 91.151, title"]
     end
 
     subgraph Embed["임베딩"]
-        Model[MiniLM-L12-v2\n384-dim]
-        Vec[청크별 벡터]
+        Model["MiniLM-L12-v2<br/>384-dim"]
+        Vec["청크별 벡터"]
     end
 
     subgraph Output["저장"]
-        PKL[(index.pkl)]
+        PKL[("index.pkl")]
     end
 
     PDF --> Read --> Clean --> Norm --> Sec --> Pack --> Filter
     Filter --> M --> Tok
     Filter --> Model --> Vec
-    M & Vec --> PKL
+    M --> PKL
+    Vec --> PKL
 ```
 
 ## 관련 함수 (`indexer.py`)

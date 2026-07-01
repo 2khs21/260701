@@ -28,17 +28,19 @@ flowchart TB
     end
 
     subgraph Storage["로컬 저장소"]
-        Docs[(documents/\nCFR PDF)]
-        Index[(index.pkl\n청크 + 임베딩 + 메타)]
+        Docs[("documents/<br/>CFR PDF")]
+        Index[("index.pkl<br/>청크 + 임베딩 + 메타")]
     end
 
     subgraph External["외부 API"]
-        Claude[Anthropic Claude API\nclaude-sonnet-4-6]
-        ST[sentence-transformers\nMiniLM-L12-v2]
+        Claude["Anthropic Claude API<br/>claude-sonnet-4-6"]
+        ST["sentence-transformers<br/>MiniLM-L12-v2"]
     end
 
     U --> App
-    App --> Params & Glossary & TokenBar
+    App --> Params
+    App --> Glossary
+    App --> TokenBar
     App -->|POST /api/chat| API
     App -->|GET /api/config| API
 
@@ -47,7 +49,7 @@ flowchart TB
     Prep --> Stream
     Stream --> Claude
     Stream --> Final
-    Final -->|reply, citations, warnings,\nusage, timing| App
+    Final -->|"reply, citations, warnings,<br/>usage, timing"| App
     App --> MD
 
     Docs --> IDX
